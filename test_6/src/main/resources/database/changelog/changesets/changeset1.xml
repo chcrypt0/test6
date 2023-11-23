@@ -1,0 +1,33 @@
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.10.xsd">
+
+    <!-- Definicja changesetu dla tabeli transaction -->
+    <changeSet id="1" author="Karol_Frackowiak">
+        <createTable tableName="transaction">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="currency_from" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="currency_to" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="base_amount" type="DECIMAL(19,4)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="converted_amount" type="DECIMAL(19,4)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="exchange_rate" type="DECIMAL(19,4)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="exchange_date" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+</databaseChangeLog>
