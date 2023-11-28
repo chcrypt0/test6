@@ -4,8 +4,6 @@ import lombok.Builder;
 import lombok.Data;
 
 import java.math.BigDecimal;
-import java.math.BigInteger;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Data
@@ -17,5 +15,5 @@ public class TransactionDto {
     private BigDecimal convertedAmount;
     private BigDecimal exchangeRate;
     private LocalDateTime exchangeDate;
-    private Boolean moreThan15kEur;
+    private BigDecimal transactionValueInEur;
 }
