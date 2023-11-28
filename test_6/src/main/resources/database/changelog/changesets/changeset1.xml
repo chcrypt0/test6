@@ -27,6 +27,9 @@
             <column name="exchange_date" type="TIMESTAMP">
                 <constraints nullable="false"/>
             </column>
+            <column name="transaction_value_in_eur" type="DECIMAL(19,4)">
+                <constraints nullable="false"/>
+            </column>
         </createTable>
     </changeSet>
 

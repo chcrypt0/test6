@@ -7,8 +7,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
-import java.math.BigInteger;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -26,8 +24,5 @@ public class Transaction {
     private BigDecimal convertedAmount;
     private BigDecimal exchangeRate;
     private LocalDateTime exchangeDate;
-
-    @Column(name = "more_than_15k_eur")
-    private Boolean moreThan15kEur;
-
+    private BigDecimal transactionValueInEur;
 }
