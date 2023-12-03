@@ -12,6 +12,8 @@ import kong.unirest.HttpResponse;
 import kong.unirest.Unirest;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.env.Environment;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -19,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
@@ -27,11 +30,13 @@ import java.util.Optional;
 public class TransactionService {
     private final TransactionRepository transactionRepository;
     private final ModelMapper modelMapper;
+    private final Environment environment;
     private static final String apiKey = "14e146aecbcb43f6895dc9ee49d56801";
 
     @Transactional
     public Transaction convertCurrency(TransactionCommand command) {
         try {
+            System.out.println("aaaaaaaaaaaaaaaaaaaaaaaa");
             JsonObject exchangeRates = fetchExchangeRates(command.getCurrencyFrom().toUpperCase(), command.getCurrencyTo().toUpperCase());
 
             Transaction transaction = createTransaction(command, exchangeRates);
@@ -42,8 +47,33 @@ public class TransactionService {
             throw new CurrencyConversionException("Unexpected error during currency conversion.");
         }
     }
+    public JsonObject fetchExchangeRates(String currencyFrom, String currencyTo) throws CurrencyConversionException {
+        if (Arrays.asList(environment.getActiveProfiles()).contains("test")) {
+            return getMockResponse(currencyFrom, currencyTo);
+        } else {
+            return apiRequest(currencyFrom, currencyTo);
+        }
+    }
 
-    private JsonObject fetchExchangeRates(String currencyFrom, String currencyTo) throws CurrencyConversionException {
+    public JsonObject getMockResponse(String currencyFrom, String currencyTo) {
+        try {
+            String exampleResponse = "{\"base\":\"" +
+                    currencyFrom +
+                    "\",\"last_updated\":1701177300,\"exchange_rates\":{\"EUR\":10,\"" +
+                    currencyTo +
+                    "\":10}}";
+            //String exampleResponse = "{\"base\":\"USD\",\"last_updated\":1701177300,\"exchange_rates\":{\"EUR\":10,\"PLN\":10}}";
+
+            JsonObject jsonResponse = JsonParser.parseString(exampleResponse).getAsJsonObject();
+            return Optional.ofNullable(jsonResponse.getAsJsonObject("exchange_rates"))
+                    .orElseThrow(() -> new ExchangeRateFetchException("Failed to fetch exchange rates from the API"));
+
+        } catch (Exception e) {
+            throw new CurrencyConversionException("POLO error during currency conversion.");
+        }
+    }
+
+    private JsonObject apiRequest(String currencyFrom, String currencyTo) throws CurrencyConversionException {
         try {
             HttpResponse<String> response = Unirest.get("https://exchange-rates.abstractapi.com/v1/live?api_key=" + apiKey + "&base=" + currencyFrom + "&target=" + currencyTo + ",EUR")
                     .asString();
@@ -56,11 +86,9 @@ public class TransactionService {
                 throw new BadExpectedStatusException("Incorrect response status from API");
             }
         } catch (Exception e) {
-            throw new CurrencyConversionException("Unexpected error during currency conversion.");
+            throw new CurrencyConversionException("POLOLO error during currency conversion.");
         }
     }
-
-
     private Transaction createTransaction(TransactionCommand command, JsonObject exchangeRates) {
 
         BigDecimal eurRate = Optional.ofNullable(exchangeRates.get("EUR"))
@@ -83,7 +111,6 @@ public class TransactionService {
         return transaction;
     }
 
-
     public TransactionDto findById(long id) {
         Transaction transaction = transactionRepository.findById(id).orElseThrow(
                 () -> new TransactionNotFoundException(String.format("Transaction with id: %s not found", id)));
@@ -92,7 +119,7 @@ public class TransactionService {
 
     public List<TransactionDto> findAll() {
         return transactionRepository.findAll().stream()
-                .map(garage -> modelMapper.map(garage, TransactionDto.class))
+                .map(transaction -> modelMapper.map(transaction, TransactionDto.class))
                 .toList();
     }
 
@@ -102,36 +129,5 @@ public class TransactionService {
 
     public Page<Transaction> findPaginated(Pageable pageable) {
         return transactionRepository.findAll(pageable);
-    }
-
-    @Transactional
-    public TransactionDto edit(Long id, TransactionCommand command) {
-        Transaction transactionToEdit = modelMapper.map(findById(id), Transaction.class);
-
-        transactionToEdit.setCurrencyFrom(command.getCurrencyFrom());
-        transactionToEdit.setCurrencyTo(command.getCurrencyTo());
-        transactionToEdit.setBaseAmount(command.getBaseAmount());
-        transactionToEdit.setConvertedAmount(command.getConvertedAmount());
-        transactionToEdit.setExchangeRate(command.getExchangeRate());
-        transactionToEdit.setExchangeDate(command.getExchangeDate());
-
-        transactionRepository.save(transactionToEdit);
-        return modelMapper.map(transactionToEdit, TransactionDto.class);
-    }
-
-
-    @Transactional
-    public TransactionDto editPartially(Long id, TransactionCommand command) {
-        Transaction transactionToEdit = modelMapper.map(findById(id), Transaction.class);
-
-        Optional.ofNullable(command.getCurrencyFrom()).ifPresent(transactionToEdit::setCurrencyFrom);
-        Optional.ofNullable(command.getCurrencyTo()).ifPresent(transactionToEdit::setCurrencyTo);
-        Optional.ofNullable(command.getBaseAmount()).ifPresent(transactionToEdit::setBaseAmount);
-        Optional.ofNullable(command.getConvertedAmount()).ifPresent(transactionToEdit::setConvertedAmount);
-        Optional.ofNullable(command.getExchangeRate()).ifPresent(transactionToEdit::setExchangeRate);
-        Optional.ofNullable(command.getExchangeDate()).ifPresent(transactionToEdit::setExchangeDate);
-
-        transactionRepository.save(transactionToEdit);
-        return modelMapper.map(transactionToEdit, TransactionDto.class);
     }
 }

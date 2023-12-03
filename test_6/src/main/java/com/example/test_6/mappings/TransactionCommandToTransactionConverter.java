@@ -15,10 +15,10 @@ public class TransactionCommandToTransactionConverter implements Converter<Trans
                 .currencyFrom(command.getCurrencyFrom())
                 .currencyTo(command.getCurrencyTo())
                 .baseAmount(command.getBaseAmount())
-                .convertedAmount(command.getConvertedAmount())
-                .exchangeRate(command.getExchangeRate())
-                .exchangeDate(command.getExchangeDate())
-                .transactionValueInEur(command.getTransactionValueInEur())
+//                .convertedAmount(command.getConvertedAmount())
+//                .exchangeRate(command.getExchangeRate())
+//                .exchangeDate(command.getExchangeDate())
+//                .transactionValueInEur(command.getTransactionValueInEur())
                 .build();
     }
 }

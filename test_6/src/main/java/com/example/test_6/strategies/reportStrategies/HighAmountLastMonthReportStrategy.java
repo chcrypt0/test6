@@ -6,10 +6,12 @@ import com.example.test_6.strategies.ReportStrategy;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Service;
 
 import java.util.List;
 
 @RequiredArgsConstructor
+@Service("HIGH_AMOUNT_LAST_MONTH")
 public class HighAmountLastMonthReportStrategy implements ReportStrategy {
     private final ReportService reportService;
 
