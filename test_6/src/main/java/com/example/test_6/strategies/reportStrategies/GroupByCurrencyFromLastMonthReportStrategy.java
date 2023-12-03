@@ -13,7 +13,6 @@ import java.util.Map;
 @Service("GROUP_BY_CURRENCY_FROM_LAST_MONTH_REPORT_STRATEGY")
 public class GroupByCurrencyFromLastMonthReportStrategy implements ReportStrategy {
     private final ReportService reportService;
-
     @Override
     public ResponseEntity<?> generateReport() {
         Map<String, Integer> groupByCurrencyFrom = reportService.getGroupByCurrencyFromLastMonth();
