@@ -5,6 +5,7 @@ import com.example.test_6.mappings.TransactionToTransactionDtoConverter;
 import com.example.test_6.model.transaction.Transaction;
 import com.example.test_6.model.transaction.command.TransactionCommand;
 import com.example.test_6.model.transaction.dto.TransactionDto;
+import com.example.test_6.model.transaction.dto.TransactionResponseDto;
 import com.example.test_6.repository.TransactionRepository;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -105,16 +106,11 @@ class TransactionServiceTest {
         when(environment.getActiveProfiles()).thenReturn(new String[]{"test"});
 
         //when
-        Transaction result = transactionService.convertCurrency(command);
+        TransactionResponseDto result = transactionService.convertCurrency(command);
 
         //then
         assertNotNull(result);
-        assertEquals(result.getCurrencyFrom(), transactionAfterExchange.getCurrencyFrom());
-        assertEquals(result.getCurrencyTo(), transactionAfterExchange.getCurrencyTo());
-        assertEquals(result.getBaseAmount(), transactionAfterExchange.getBaseAmount());
         assertEquals(result.getConvertedAmount(), transactionAfterExchange.getConvertedAmount());
-        assertEquals(result.getExchangeRate(), transactionAfterExchange.getExchangeRate());
-        assertEquals(result.getTransactionValueInEur(), transactionAfterExchange.getTransactionValueInEur());
     }
 
     @Test

@@ -28,17 +28,12 @@ public class TransactionController {
     private final ModelMapper modelMapper;
     @PostMapping("/exchange")
     public ResponseEntity<TransactionResponseDto> convertCurrency(@RequestBody TransactionCommand command) {
-        Transaction transaction = transactionService.convertCurrency(command);
-        return new ResponseEntity<>(modelMapper.map(transaction, TransactionResponseDto.class), HttpStatus.OK);
+        return new ResponseEntity<>(transactionService.convertCurrency(command), HttpStatus.OK);
     }
 
     @GetMapping("/exchanges")
     public ResponseEntity<List<TransactionPageDto>> getTransactionsHistory(@PageableDefault(size = 15)Pageable pageable) {
-        Page<Transaction> pageResult = transactionService.findPaginated(pageable);
-        List<TransactionPageDto> dtos = pageResult.stream()
-                .map(transaction -> modelMapper.map(transaction, TransactionPageDto.class))
-                .collect(Collectors.toList());
-        return new ResponseEntity<>(dtos, HttpStatus.OK);
+        return new ResponseEntity<>(transactionService.findPaginated(pageable), HttpStatus.OK);
     }
 
     @GetMapping("/{id}")
@@ -58,4 +53,5 @@ public class TransactionController {
         transactionService.deleteById(id);
         return ResponseEntity.noContent().build();
     }
+
 }

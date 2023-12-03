@@ -4,6 +4,8 @@ import com.example.test_6.exception.*;
 import com.example.test_6.model.transaction.Transaction;
 import com.example.test_6.model.transaction.command.TransactionCommand;
 import com.example.test_6.model.transaction.dto.TransactionDto;
+import com.example.test_6.model.transaction.dto.TransactionPageDto;
+import com.example.test_6.model.transaction.dto.TransactionResponseDto;
 import com.example.test_6.repository.TransactionRepository;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -12,7 +14,6 @@ import kong.unirest.HttpResponse;
 import kong.unirest.Unirest;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.env.Environment;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -24,6 +25,7 @@ import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -34,14 +36,12 @@ public class TransactionService {
     private static final String apiKey = "14e146aecbcb43f6895dc9ee49d56801";
 
     @Transactional
-    public Transaction convertCurrency(TransactionCommand command) {
+    public TransactionResponseDto convertCurrency(TransactionCommand command) {
         try {
-            System.out.println("aaaaaaaaaaaaaaaaaaaaaaaa");
             JsonObject exchangeRates = fetchExchangeRates(command.getCurrencyFrom().toUpperCase(), command.getCurrencyTo().toUpperCase());
-
             Transaction transaction = createTransaction(command, exchangeRates);
             transactionRepository.save(transaction);
-            return transaction;
+            return modelMapper.map(transaction, TransactionResponseDto.class);
 
         } catch (Exception e) {
             throw new CurrencyConversionException("Unexpected error during currency conversion.");
@@ -62,14 +62,12 @@ public class TransactionService {
                     "\",\"last_updated\":1701177300,\"exchange_rates\":{\"EUR\":10,\"" +
                     currencyTo +
                     "\":10}}";
-            //String exampleResponse = "{\"base\":\"USD\",\"last_updated\":1701177300,\"exchange_rates\":{\"EUR\":10,\"PLN\":10}}";
-
             JsonObject jsonResponse = JsonParser.parseString(exampleResponse).getAsJsonObject();
             return Optional.ofNullable(jsonResponse.getAsJsonObject("exchange_rates"))
                     .orElseThrow(() -> new ExchangeRateFetchException("Failed to fetch exchange rates from the API"));
 
         } catch (Exception e) {
-            throw new CurrencyConversionException("POLO error during currency conversion.");
+            throw new CurrencyConversionException("Error during currency conversion.");
         }
     }
 
@@ -86,7 +84,7 @@ public class TransactionService {
                 throw new BadExpectedStatusException("Incorrect response status from API");
             }
         } catch (Exception e) {
-            throw new CurrencyConversionException("POLOLO error during currency conversion.");
+            throw new CurrencyConversionException("Error during currency conversion.");
         }
     }
     private Transaction createTransaction(TransactionCommand command, JsonObject exchangeRates) {
@@ -127,7 +125,10 @@ public class TransactionService {
         transactionRepository.deleteById(id);
     }
 
-    public Page<Transaction> findPaginated(Pageable pageable) {
-        return transactionRepository.findAll(pageable);
+    public List<TransactionPageDto> findPaginated(Pageable pageable) {
+        Page<Transaction> pageResult = transactionRepository.findAll(pageable);
+        return pageResult.stream()
+                .map(transaction -> modelMapper.map(transaction, TransactionPageDto.class))
+                .collect(Collectors.toList());
     }
 }

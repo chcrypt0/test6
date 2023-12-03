@@ -14,7 +14,6 @@ import java.util.List;
 @Service("HIGH_AMOUNT_LAST_MONTH")
 public class HighAmountLastMonthReportStrategy implements ReportStrategy {
     private final ReportService reportService;
-
     @Override
     public ResponseEntity<?> generateReport() {
         List<Transaction> highAmountExchanges = reportService.getHighAmountLastMonth();

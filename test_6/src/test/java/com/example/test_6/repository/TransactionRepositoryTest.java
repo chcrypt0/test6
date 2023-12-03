@@ -35,8 +35,6 @@ class TransactionRepositoryTest {
         }
     }
 
-
-
     @Test
     void groupTransactionsByCurrencyFrom() {
         LocalDateTime startOfMonth = LocalDateTime.of(2023, 10, 1, 0, 0, 0);
@@ -45,9 +43,9 @@ class TransactionRepositoryTest {
         List<Object[]> results = transactionRepository.groupTransactionsByCurrencyFrom(startOfMonth, endOfMonth);
 
         Map<String, Long> expectedCounts = new HashMap<>();
-        expectedCounts.put("USD", 4L); // Liczba wystąpień USD jako currency_from
-        expectedCounts.put("GBP", 4L); // Liczba wystąpień GBP jako currency_from
-        expectedCounts.put("EUR", 4L); // Liczba wystąpień EUR jako currency_from
+        expectedCounts.put("USD", 4L);
+        expectedCounts.put("GBP", 4L);
+        expectedCounts.put("EUR", 4L);
 
         for (Object[] result : results) {
             String currency = (String) result[0];
@@ -65,9 +63,9 @@ class TransactionRepositoryTest {
         List<Object[]> results = transactionRepository.groupTransactionsByCurrencyTo(startOfMonth, endOfMonth);
 
         Map<String, Long> expectedCounts = new HashMap<>();
-        expectedCounts.put("EUR", 4L); // Liczba wystąpień EUR jako currency_to
-        expectedCounts.put("USD", 4L); // Liczba wystąpień USD jako currency_to
-        expectedCounts.put("GBP", 4L); // Liczba wystąpień GBP jako currency_to
+        expectedCounts.put("EUR", 4L);
+        expectedCounts.put("USD", 4L);
+        expectedCounts.put("GBP", 4L);
 
         for (Object[] result : results) {
             String currency = (String) result[0];
