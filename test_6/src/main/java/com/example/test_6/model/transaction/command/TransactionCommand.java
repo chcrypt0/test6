@@ -14,9 +14,4 @@ public class TransactionCommand {
     private String currencyFrom;
     private String currencyTo;
     private BigDecimal baseAmount;
-    private BigDecimal convertedAmount;
-    private BigDecimal exchangeRate;
-    private LocalDateTime exchangeDate;
-    private BigDecimal transactionValueInEur;
-
 }

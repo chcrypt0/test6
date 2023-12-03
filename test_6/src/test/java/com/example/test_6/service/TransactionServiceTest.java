@@ -1,10 +1,13 @@
 package com.example.test_6.service;
 
 import com.example.test_6.exception.TransactionNotFoundException;
+import com.example.test_6.mappings.TransactionToTransactionDtoConverter;
 import com.example.test_6.model.transaction.Transaction;
 import com.example.test_6.model.transaction.command.TransactionCommand;
 import com.example.test_6.model.transaction.dto.TransactionDto;
 import com.example.test_6.repository.TransactionRepository;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -12,6 +15,9 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.modelmapper.ModelMapper;
+import org.modelmapper.internal.util.Assert;
+import org.springframework.core.env.Environment;
+import org.springframework.test.context.ActiveProfiles;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -22,29 +28,34 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 import static org.mockito.Mockito.when;
-
+@ActiveProfiles("test")
 @ExtendWith(MockitoExtension.class)
 class TransactionServiceTest {
 
     @Mock
     private TransactionRepository transactionRepository;
-
     @InjectMocks
     private TransactionService transactionService;
     @Mock
+    private Environment environment;
+    private static final String API_RESPONSE = "{\"base\":\"PLN\",\"last_updated\":1701177300,\"exchange_rates\":{\"EUR\":10,\"USD\":10}}";
+    @Mock
     ModelMapper modelMapper;
+    TransactionCommand command;
+    JsonObject exchangeRatesJson;
+    Transaction transactionAfterExchange;
+    Transaction transaction1;
+    Transaction transaction2;
 
 
     @BeforeEach
-    void setUp() {
+    void setUpRepo() {
         transactionRepository = mock(TransactionRepository.class);
-        transactionService = new TransactionService(transactionRepository, modelMapper);
+        transactionService = new TransactionService(transactionRepository, modelMapper, environment);
     }
-
-    @Test
-    void findById() {
-        //given
-       Transaction transaction1 = Transaction.builder()
+    @BeforeEach
+    void setUpExampleTransactions(){
+         transaction1 = Transaction.builder()
                 .id(1L)
                 .currencyFrom("USD")
                 .currencyTo("EUR")
@@ -55,6 +66,60 @@ class TransactionServiceTest {
                 .transactionValueInEur(BigDecimal.valueOf(92))
                 .build();
 
+         transaction2 = Transaction.builder()
+                .id(2L)
+                .currencyFrom("USD")
+                .currencyTo("EUR")
+                .baseAmount(BigDecimal.valueOf(100))
+                .convertedAmount(BigDecimal.valueOf(92))
+                .exchangeRate(BigDecimal.valueOf(0.92))
+                .exchangeDate(LocalDateTime.now())
+                .transactionValueInEur(BigDecimal.valueOf(92))
+                .build();
+    }
+    @BeforeEach
+    void setUpExampleExchangeData() {
+        command = TransactionCommand.builder()
+                .currencyFrom("USD")
+                .currencyTo("PLN")
+                .baseAmount(new BigDecimal(100))
+                .build();
+
+        exchangeRatesJson = JsonParser.parseString(API_RESPONSE).getAsJsonObject().getAsJsonObject("exchange_rates");
+        transactionAfterExchange = Transaction.builder()
+                .id(1L)
+                .currencyFrom("PLN")
+                .currencyTo("USD")
+                .baseAmount(new BigDecimal(100))
+                .convertedAmount(new BigDecimal(1000).multiply(exchangeRatesJson.get("USD").getAsBigDecimal()))
+                .exchangeRate(exchangeRatesJson.get("USD").getAsBigDecimal())
+                .exchangeDate(LocalDateTime.now())
+                .transactionValueInEur(new BigDecimal(1000))
+                .build();
+
+       lenient().when(modelMapper.map(command, Transaction.class)).thenReturn(transactionAfterExchange);
+    }
+    @Test
+    void convertCurrency() {
+        //given
+        when(environment.getActiveProfiles()).thenReturn(new String[]{"test"});
+
+        //when
+        Transaction result = transactionService.convertCurrency(command);
+
+        //then
+        assertNotNull(result);
+        assertEquals(result.getCurrencyFrom(), transactionAfterExchange.getCurrencyFrom());
+        assertEquals(result.getCurrencyTo(), transactionAfterExchange.getCurrencyTo());
+        assertEquals(result.getBaseAmount(), transactionAfterExchange.getBaseAmount());
+        assertEquals(result.getConvertedAmount(), transactionAfterExchange.getConvertedAmount());
+        assertEquals(result.getExchangeRate(), transactionAfterExchange.getExchangeRate());
+        assertEquals(result.getTransactionValueInEur(), transactionAfterExchange.getTransactionValueInEur());
+    }
+
+    @Test
+    void findById() {
+        //given
         Long transactionId = 1L;
         when(transactionRepository.findById(transactionId)).thenReturn(Optional.ofNullable(transaction1));
 
@@ -85,50 +150,58 @@ class TransactionServiceTest {
     @Test
     void findAll() {
         //given
-       Transaction transaction1 = Transaction.builder()
-                .id(1L)
-                .currencyFrom("USD")
-                .currencyTo("EUR")
-                .baseAmount(BigDecimal.valueOf(100))
-                .convertedAmount(BigDecimal.valueOf(92))
-                .exchangeRate(BigDecimal.valueOf(0.92))
-                .exchangeDate(LocalDateTime.now())
-                .transactionValueInEur(BigDecimal.valueOf(92))
+        List<Transaction> transactions = Arrays.asList(transaction1, transaction2);
+
+        TransactionDto transactionDto1 = TransactionDto.builder()
+                .currencyFrom(transaction1.getCurrencyFrom())
+                .currencyTo(transaction1.getCurrencyTo())
+                .baseAmount(transaction1.getBaseAmount())
+                .convertedAmount(transaction1.getConvertedAmount())
+                .exchangeRate(transaction1.getExchangeRate())
+                .exchangeDate(transaction1.getExchangeDate())
+                .transactionValueInEur(transaction1.getTransactionValueInEur())
                 .build();
 
-       Transaction transaction2 = Transaction.builder()
-                .id(2L)
-                .currencyFrom("USD")
-                .currencyTo("EUR")
-                .baseAmount(BigDecimal.valueOf(100))
-                .convertedAmount(BigDecimal.valueOf(92))
-                .exchangeRate(BigDecimal.valueOf(0.92))
-                .exchangeDate(LocalDateTime.now())
-                .transactionValueInEur(BigDecimal.valueOf(92))
+        TransactionDto transactionDto2 = TransactionDto.builder()
+                .currencyFrom(transaction2.getCurrencyFrom())
+                .currencyTo(transaction2.getCurrencyTo())
+                .baseAmount(transaction2.getBaseAmount())
+                .convertedAmount(transaction2.getConvertedAmount())
+                .exchangeRate(transaction2.getExchangeRate())
+                .exchangeDate(transaction2.getExchangeDate())
+                .transactionValueInEur(transaction2.getTransactionValueInEur())
                 .build();
-        List<Transaction> expectedTransactions = Arrays.asList(transaction1, transaction2);
-        when(transactionRepository.findAll()).thenReturn(expectedTransactions);
+
+
+        when(transactionRepository.findAll()).thenReturn(transactions);
+        when(modelMapper.map(transaction1, TransactionDto.class)).thenReturn(transactionDto1);
+        when(modelMapper.map(transaction2, TransactionDto.class)).thenReturn(transactionDto2);
 
         //when
         List<TransactionDto> actualTransactions = transactionService.findAll();
 
         //then
-        assertEquals(transaction1.getCurrencyFrom(), actualTransactions.get(0).getCurrencyFrom());
-        assertEquals(transaction1.getCurrencyTo(), actualTransactions.get(0).getCurrencyTo());
-        assertEquals(transaction1.getBaseAmount(), actualTransactions.get(0).getBaseAmount());
-        assertEquals(transaction1.getConvertedAmount(), actualTransactions.get(0).getConvertedAmount());
-        assertEquals(transaction1.getExchangeRate(), actualTransactions.get(0).getExchangeRate());
-        assertEquals(transaction1.getExchangeDate(), actualTransactions.get(0).getExchangeDate());
-        assertEquals(transaction1.getTransactionValueInEur(), actualTransactions.get(0).getTransactionValueInEur());
+        assertEquals(2, actualTransactions.size());
 
-        assertEquals(transaction2.getCurrencyFrom(), actualTransactions.get(1).getCurrencyFrom());
-        assertEquals(transaction2.getCurrencyTo(), actualTransactions.get(1).getCurrencyTo());
-        assertEquals(transaction2.getBaseAmount(), actualTransactions.get(1).getBaseAmount());
-        assertEquals(transaction2.getConvertedAmount(), actualTransactions.get(1).getConvertedAmount());
-        assertEquals(transaction2.getExchangeRate(), actualTransactions.get(1).getExchangeRate());
-        assertEquals(transaction2.getExchangeDate(), actualTransactions.get(1).getExchangeDate());
-        assertEquals(transaction2.getTransactionValueInEur(), actualTransactions.get(1).getTransactionValueInEur());
+        TransactionDto receivedDto1 = actualTransactions.get(0);
+        assertEquals(transaction1.getCurrencyFrom(), receivedDto1.getCurrencyFrom());
+        assertEquals(transaction1.getCurrencyTo(), receivedDto1.getCurrencyTo());
+        assertEquals(transaction1.getBaseAmount(), receivedDto1.getBaseAmount());
+        assertEquals(transaction1.getConvertedAmount(), receivedDto1.getConvertedAmount());
+        assertEquals(transaction1.getExchangeRate(), receivedDto1.getExchangeRate());
+        assertEquals(transaction1.getExchangeDate(), receivedDto1.getExchangeDate());
+        assertEquals(transaction1.getTransactionValueInEur(), receivedDto1.getTransactionValueInEur());
+
+        TransactionDto receivedDto2 = actualTransactions.get(1);
+        assertEquals(transaction2.getCurrencyFrom(), receivedDto2.getCurrencyFrom());
+        assertEquals(transaction2.getCurrencyTo(), receivedDto2.getCurrencyTo());
+        assertEquals(transaction2.getBaseAmount(), receivedDto2.getBaseAmount());
+        assertEquals(transaction2.getConvertedAmount(), receivedDto2.getConvertedAmount());
+        assertEquals(transaction2.getExchangeRate(), receivedDto2.getExchangeRate());
+        assertEquals(transaction2.getExchangeDate(), receivedDto2.getExchangeDate());
+        assertEquals(transaction2.getTransactionValueInEur(), receivedDto2.getTransactionValueInEur());
     }
+
 
     @Test
     void deleteById() {
@@ -142,75 +215,5 @@ class TransactionServiceTest {
         //then
         verify(transactionRepository, times(1)).deleteById(patientId);
 
-    }
-
-    @Test
-    void edit() {
-        //given
-        Long transactionId = 1L;
-        Transaction transaction = new Transaction();
-        TransactionDto transactionDto = modelMapper.map(transaction, TransactionDto.class);
-
-        TransactionCommand command = TransactionCommand.builder()
-                .currencyFrom("a")
-                .currencyTo("a")
-                .baseAmount(BigDecimal.valueOf(0))
-                .convertedAmount(BigDecimal.valueOf(0))
-                .exchangeRate(BigDecimal.valueOf(0))
-                .exchangeDate(LocalDateTime.of(2000,1,1,3,4,55,3))
-                .build();
-
-        when(transactionRepository.findById(transactionId)).thenReturn(Optional.of(transaction));
-
-        //when
-        TransactionDto editedTransaction = transactionService.edit(transactionId, command);
-
-        //then
-        assertAll(
-                () -> assertEquals("a", editedTransaction.getCurrencyFrom()),
-                () -> assertEquals("a", editedTransaction.getCurrencyTo()),
-                () -> assertEquals(BigDecimal.valueOf(0), editedTransaction.getBaseAmount()),
-                () -> assertEquals(BigDecimal.valueOf(0), editedTransaction.getConvertedAmount()),
-                () -> assertEquals(BigDecimal.valueOf(0), editedTransaction.getExchangeRate()),
-                () -> assertEquals(LocalDateTime.of(2000,1,1,3,4,55,3), editedTransaction.getExchangeDate())
-        );
-
-    }
-
-    @Test
-    void editPartially() {
-        //given
-        Long transactionId = 1L;
-
-        Transaction transaction = Transaction.builder()
-                .id(1L)
-                .currencyFrom("USD")
-                .currencyTo("EUR")
-                .baseAmount(BigDecimal.valueOf(100))
-                .convertedAmount(BigDecimal.valueOf(92))
-                .exchangeRate(BigDecimal.valueOf(0.92))
-                .exchangeDate(LocalDateTime.now())
-                .transactionValueInEur(BigDecimal.valueOf(92))
-                .build();
-
-        TransactionCommand command = TransactionCommand.builder()
-                .currencyFrom("a")
-                .baseAmount(BigDecimal.valueOf(0))
-                .exchangeRate(BigDecimal.valueOf(0))
-                .build();
-        when(transactionRepository.findById(transactionId)).thenReturn(Optional.of(transaction));
-
-        //when
-        TransactionDto editedTransaction = transactionService.editPartially(transactionId, command);
-
-        //then
-        assertAll(
-                () -> assertEquals(transaction.getCurrencyFrom(), editedTransaction.getCurrencyFrom()),
-                () -> assertEquals(transaction.getCurrencyTo(), editedTransaction.getCurrencyTo()),
-                () -> assertEquals(transaction.getBaseAmount(), editedTransaction.getBaseAmount()),
-                () -> assertEquals(transaction.getConvertedAmount(), editedTransaction.getConvertedAmount()),
-                () -> assertEquals(transaction.getExchangeRate(), editedTransaction.getExchangeRate()),
-                () -> assertEquals(transaction.getExchangeDate(), editedTransaction.getExchangeDate())
-        );
     }
 }

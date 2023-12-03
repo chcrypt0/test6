@@ -26,10 +26,9 @@ public class TransactionController {
     private final TransactionService transactionService;
 
     private final ModelMapper modelMapper;
-    @GetMapping("/exchange")
+    @PostMapping("/exchange")
     public ResponseEntity<TransactionResponseDto> convertCurrency(@RequestBody TransactionCommand command) {
         Transaction transaction = transactionService.convertCurrency(command);
-
         return new ResponseEntity<>(modelMapper.map(transaction, TransactionResponseDto.class), HttpStatus.OK);
     }
 
@@ -58,17 +57,5 @@ public class TransactionController {
     public ResponseEntity<?> deleteById(@PathVariable("id") Long id){
         transactionService.deleteById(id);
         return ResponseEntity.noContent().build();
-    }
-
-    @PutMapping("/{id}")
-    public ResponseEntity<TransactionDto> edit(@PathVariable("id") Long id, @RequestBody TransactionCommand command){
-        TransactionDto transactionDto = transactionService.edit(id, command);
-        return new ResponseEntity<>(transactionDto, HttpStatus.OK);
-    }
-
-    @PatchMapping("/{id}")
-    public ResponseEntity<TransactionDto> editPartially(@PathVariable("id") Long id, @RequestBody TransactionCommand command){
-        TransactionDto transactionDto = transactionService.editPartially(id, command);
-        return new ResponseEntity<>(transactionDto, HttpStatus.OK);
     }
 }
